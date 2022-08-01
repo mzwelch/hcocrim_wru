@@ -2,9 +2,19 @@
 
 # WRU Add race -----------------------------------------------------------
 #Shannon: download tract dataset first
-# wru_tract <- get_census_data(key = Sys.getenv("CENSUS_API_KEY"),
-#                                state = c("TX"), age = F, sex = F,
-#                                census.geo = "tract")
+wru_tract <- get_census_data(key = Sys.getenv("CENSUS_API_KEY"),
+                              state = c("TX"), age = F, sex = F,
+                              census.geo = "tract")
+
+wru_tract_age <- get_census_data(key = Sys.getenv("CENSUS_API_KEY"),
+                                 state = c("TX"), age = T, sex = F,
+                                 census.geo = "tract")
+wru_tract_sex <- get_census_data(key = Sys.getenv("CENSUS_API_KEY"),
+                                 state = c("TX"), age = F, sex = T,
+                                 census.geo = "tract")
+wru_tract_sex_age <- get_census_data(key = Sys.getenv("CENSUS_API_KEY"),
+                                     state = c("TX"), age = T, sex = T,
+                                     census.geo = "tract")
 # 
 # wru_place <- get_census_data(key = Sys.getenv("CENSUS_API_KEY"),
 #                              state = c("TX"), age = F, sex = F,

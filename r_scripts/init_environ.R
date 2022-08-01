@@ -1,18 +1,5 @@
 #### environment setup, census key, libraries, etc.####
 
-library(tidyverse)
-library(censusapi)
-library(lubridate)
-library(janitor)
-library(config)
-library(googlesheets4)
-library(here)
-library(wru)
-library(tidycensus)
-library(jaspatial)
-library(tigris)
-library(sf)
-
 #### read in data and convert relevant fields to prepare for predict_race()####
 #census data
 #save census key

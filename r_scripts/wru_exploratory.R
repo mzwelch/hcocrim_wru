@@ -12,13 +12,34 @@
 #geotagged data with applicable wru fields and exploratory fields stored as geoloc
 
 #### run predict_race() and store ####
-## first predictive method using wru W/O geo data (names, race, sex, age) ##
-name_wru <- geoloc %>% 
-  predict_race(surname.only = TRUE) 
-## second predictive method using wru ONLY geo data (no names, sex, age) ##
-## third predictive method using wru W/ geo data AND names (no sex or age) ##
-## fourth predictive method using wru w/ ALL features (geo data, names, sex, and age) ##
-geoloc %>% slice(1:10) %>% predict_race(race.init = race, age = T)
+## first predictive method using wru W/O geo data (names only) ##
+name_wru <- geoloc %>% st_drop_geometry() %>% predict_race(surname.only = T)
+
+## second predictive method using wru W/ geo data ##
+#names
+geoname_wru <- geoloc %>% st_drop_geometry( ) %>%
+  predict_race(
+    voter.file = .,
+    census.geo = "tract",
+    census.key = "CENSUS_API_KEY",
+    census.data = wru_tract)
+#name,sex
+geoname_sex_wru <- geoloc %>% st_drop_geometry( ) %>%
+  predict_race(
+    voter.file = .,
+    sex = T,
+    census.geo = "tract",
+    census.key = "CENSUS_API_KEY",
+    census.data = wru_tract)
+#name, sex, age
+geoname_sex_wru <- geoloc %>% st_drop_geometry( ) %>%
+  predict_race(
+    voter.file = .,
+    sex = T,
+    age = T,
+    census.geo = "tract",
+    census.key = "CENSUS_API_KEY",
+    census.data = wru_tract)
 
 #### convert predictions to usable form (long) and hispanic/non-hisp####
 ## create list of predictions, create loop, convert all to long in order to weight
