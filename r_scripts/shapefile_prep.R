@@ -18,11 +18,11 @@ filter_shape <- function(.data, .dataId, .boundary, .boundaryId) {
 }
 
 #Harris
-counties <- tigris::counties(48, cb=T) %>%
-  clean_shape() %>% 
-  filter(geoid %in% c("48201")) %>% 
-  dplyr::select(geoid = geoid, geoname = name) %>% 
-  mutate(geotype = "Harris County")
+#counties <- tigris::counties(48, cb=T) %>%
+ # clean_shape() %>% 
+  #filter(geoid %in% c("48201")) %>% 
+  #dplyr::select(geoid = geoid, geoname = name) %>% 
+  #mutate(geotype = "Harris County")
 
 #### Tracts 2019 #######
 tracts <- tigris::tracts(48,  #texas all
@@ -33,11 +33,27 @@ tracts <- tigris::tracts(48,  #texas all
   dplyr::select(geoid, geoname) %>% 
   mutate(geotype = "Census tracts")
 
-wru_tract <- get_census_data(key = Sys.getenv("CENSUS_API_KEY"),
-                             state = c("TX"), age = T, sex = T,
-                             census.geo = "tract")
+### stored census data
 
-save(wru_tract, tracts, file =  here::here("data", "tracts_tx.RData"))
+#P(Geolocation|Race)
+wru_tract <- get_census_data(key = Sys.getenv("CENSUS_API_KEY"),
+                             state = c("TX"), age = F, sex = F,
+                             census.geo = "tract")
+#P(Geolocation, Age | Race)
+wru_tract_age <- get_census_data(key = Sys.getenv("CENSUS_API_KEY"),
+                                 state = c("TX"), age = T, sex = F,
+                                 census.geo = "tract")
+#P(Geolocation, Sex | Race)
+wru_tract_sex <- get_census_data(key = Sys.getenv("CENSUS_API_KEY"),
+                                 state = c("TX"), age = F, sex = T,
+                                 census.geo = "tract")
+#P(Geolocation, Age, Sex | Race)
+wru_tract_sex_age <- get_census_data(key = Sys.getenv("CENSUS_API_KEY"),
+                                     state = c("TX"), age = T, sex = T,
+                                     census.geo = "tract")
+
+save(tracts,wru_tract,
+     file =  here::here("data", "tracts_tx.RData"))
 
 
 
