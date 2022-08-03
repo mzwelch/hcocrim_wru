@@ -8,7 +8,7 @@
 #1) take highest and use that
 #2) weight the entries according to top two, three to all five categories
 
-#if new, run init_environ.R shapefile_prep.R, wru_dataprep.R
+#run init_environ.R shapefile_prep.R, wru_dataprep.R
 #geotagged data with applicable wru fields and exploratory fields stored as geoloc
 
 #### run predict_race() and store ####
@@ -67,8 +67,7 @@ for (df in predict_list){
   predict_list_nonhisp <- list(c(predict_list_nonhisp,df))
 }
 
-
-predict_list_weights
+predict_list_weights <- list()
 for(df in predict_list){
   df <- df %>% 
     pivot_longer(
@@ -77,17 +76,51 @@ for(df in predict_list){
       names_prefix = "pred.",
       values_to = "predict_value"
     )
+  predict_list_weights[[df]] <- df
 }
 
+name_wru_weight <-name_wru %>%
+  mutate(pred.nonhisp = pred.whi + pred.bla + pred.asi + pred.oth) %>% #add ethnicity
+  pivot_longer(
+    cols = starts_with("pred."),
+    names_to = "pred_race",
+    names_prefix = "pred.",
+    values_to = "predict_value")
+
+geoname_wru_weight <-geoname_wru %>% 
+  mutate(pred.nonhisp = pred.whi + pred.bla + pred.asi + pred.oth) %>% #add ethnicity
+  pivot_longer( 
+    cols = starts_with("pred."), 
+    names_to = "pred_race",
+    names_prefix = "pred.",
+    values_to = "predict_value") # pivot to create weights
 
 
-## create list of predictions, create loop, convert all to long in order to weight
 
+#general pop stats
+#can use either _wru as we are not yet getting into weights and apps of those numbers
+#top ten off_cat
+genpop_offcat <- name_wru %>% 
+  group_by(offcat) %>% 
+  summarise(n = n()) %>% arrange(desc(n))
+#top ten by off_cat and race
+genpop_offcat_race <- name_wru %>% 
+  group_by(offcat,race) %>% 
+  summarise(n = n()) %>% arrange(desc(n))
 
-## create list of predictions, create loop, 
-## collapse predictions into hispanic v. nonhispanic, convert all to long to weight
+#use pred_value as weights, group by pred_race and off_cat, sum on pred_value
+weighted_offcat_pred_race_name <- name_wru_weight %>% filter(pred_race != "nonhisp") %>% 
+  group_by(offcat, pred_race) %>% 
+  summarise(n = sum(predict_value)) %>% arrange(desc(n))
+weighted_offcat_pred_eth_name <- name_wru_weight %>% filter(pred_race == "nonhisp" | pred_race == "his") %>% 
+  group_by(offcat, pred_race) %>% 
+  summarise(n = sum(predict_value)) %>% arrange(desc(n))
 
-nameset <- data %>% slice(1:10) %>% select(surname,first,middle, def_rac, def_sex, def_dob, def_st)
-data(voters)
-predict_race(nameset)
-predict_race(nameset,surname.only = TRUE)
+weighted_offcat_pred_race_geoname <- geoname_wru_weight %>% filter(pred_race != "nonhisp") %>% 
+  group_by(offcat, pred_race) %>% 
+  summarise(n = sum(predict_value)) %>% arrange(desc(n))
+weighted_offcat_pred_eth_geoname <- geoname_wru_weight %>% 
+  filter(pred_race == "nonhisp" | pred_race == "his") %>% 
+  group_by(offcat, pred_race) %>% 
+  summarise(n = sum(predict_value)) %>% arrange(desc(n))
+
