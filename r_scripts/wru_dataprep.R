@@ -59,6 +59,8 @@ geoloc <- st_join(data,tracts) %>% # impute tract level info for each def
 #number of def removed
 missing_geoid <- length(data[[1]]) - length(geoloc[[1]])
 
+
+
 #### run predict_race() and store ####
 ## first predictive method using wru W/O geo data (names only) ##
 name_wru <- geoloc %>% st_drop_geometry() %>% predict_race(surname.only = T)
@@ -77,15 +79,16 @@ geo_tractdist <- geoloc %>% st_drop_geometry %>%
             by = "tract",
             keep = FALSE)
 #name,sex
-#geoname_sex_wru <- geoloc %>% st_drop_geometry( ) %>%
+# geoname_sex_wru <- geoloc %>% st_drop_geometry() %>%
+# #filter(is.na(sex) == FALSE ) %>% 
 #  predict_race(
 #    voter.file = .,
 #    sex = T,
 #    census.geo = "tract",
-#census.key = "CENSUS_API_KEY",
+# census.key = "CENSUS_API_KEY",
 #    census.data = wru_tract_sex)
 #name, sex, age
-#geoname_sex_age_wru <- geoloc %>% st_drop_geometry( ) %>%
+#geoname_sex_age_wru <- geoloc %>% st_drop_geometry() %>%
 #  predict_race(
 #    voter.file = .,
 #    sex = T,
@@ -94,7 +97,7 @@ geo_tractdist <- geoloc %>% st_drop_geometry %>%
 #    census.key = "CENSUS_API_KEY",
 #    census.data = wru_tract_sex_age)
 #name, initial race
-#geoname_race.init <- geoloc%>% st_drop_geometry( ) %>%
+#geoname_race.init <- geoloc %>% st_drop_geometry() %>%
 #  predict_race(
 #    voter.file = .,
 #    race.init = T,

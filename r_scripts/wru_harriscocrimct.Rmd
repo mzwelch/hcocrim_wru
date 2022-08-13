@@ -1,103 +1,76 @@
-#### WRU Exploratory Research ####
-#This script explores the utility of the WRU pacakge in determinig Hisp/Non-Hisp in the HCo Crim. Ct Dataset
-#Of interest are the the layers of added precision, confounding features, work with census data and geographic data.
-#Not addressed in WRU package article "(insert link here)" is effect on M vs F prediction, increased or decreased accuracy (would only apply in case using first name)
-#Other questions that have poppped up are signing officer race, is this useful?
-#Methods to confirm "accuracy" rate
-#Finally, the package will give a likelihood across 5+ racial categories, methods to determine race:
-#1) take highest and use that
-#2) weight the entries according to top two, three to all five categories
+---
+title: "Harris County Criminal Court and Race"
+author: "Malsi Zambrano-Welch"
+date: "2022-08-12"
+output: html_document
+---
 
-#run init_environ.R shapefile_prep.R, wru_dataprep.R
-#geotagged data with applicable wru fields and exploratory fields stored as geoloc
-
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(highcharter)
 library(jastyle)
-#### run predict_race() and store ####
-## first predictive method using wru W/O geo data (names only) ##
-name_wru <- geoloc %>% st_drop_geometry() %>% predict_race(surname.only = T)
+```
 
-## second predictive method using wru W/ geo data ##
-#names
-geoname_wru <- geoloc %>% st_drop_geometry( ) %>%
-  predict_race(
-    voter.file = .,
-    census.geo = "tract",
-    census.key = "CENSUS_API_KEY",
-    census.data = wru_tract)
-## third method W/O wru package, application of racial distribution by tract
-geo_tractdist <- geoloc %>% st_drop_geometry %>% 
-  left_join(wru_tract[["TX"]][["tract"]] %>% select(tract,r_whi,r_bla,r_his,r_asi,r_oth), 
-            by = "tract",
-            keep = FALSE)
-#name,sex
-#geoname_sex_wru <- geoloc %>% st_drop_geometry( ) %>%
-#  predict_race(
-#    voter.file = .,
-#    sex = T,
-#    census.geo = "tract",
-    #census.key = "CENSUS_API_KEY",
-    #    census.data = wru_tract_sex)
-#name, sex, age
-#geoname_sex_age_wru <- geoloc %>% st_drop_geometry( ) %>%
-#  predict_race(
-#    voter.file = .,
-#    sex = T,
-    #    age = T,
-    #    census.geo = "tract",
-    #    census.key = "CENSUS_API_KEY",
-    #    census.data = wru_tract_sex_age)
-#name, initial race
-#geoname_race.init <- geoloc%>% st_drop_geometry( ) %>%
-#  predict_race(
-#    voter.file = .,
-#    race.init = T,
-#    census.geo = "tract",
-#    census.key = "CENSUS_API_KEY",
-#    census.data = wru_tract_sex_age)
+## WRU in the Harris County Criminal Court System
 
-save(name_wru,geoname_wru,
-     file = here::here("data","predictions.RData"))
+I explore the application of the WRU package (Imai & Khanna, 2016) on the Harris County Criminal Court data by offender. For each case, the offender is given an arresting-officer-determined race. The officer identifies the offender into one of five categories: white, black, asian, Native American, and unknown. The options do not included Hispanic/Latino. I explore the utility of the WRU package to add the probability an offender is Hispanic/Latino to the case information and explicitly use those predictions to evaluate differences in rates of offense category charges among offenders.
 
-#### convert predictions to usable form (long) and hispanic/non-hisp####
-#load(here::here("data","predictions.RData")))
-#hisp/nonhisp, sum all less pred hisp to pred_nonhisp
-predict_list <- list(name_wru,geoname_wru)
-predict_list_nonhisp <- list()
-for (df in predict_list){
-  df <- df %>% mutate(pred.nonhisp = pred.whi + pred.bla + pred.asi + pred.oth)
-  predict_list_nonhisp <- list(c(predict_list_nonhisp,df))
-}
+The wru package works by Bayesian probability prediction. Most specifically, it calculates the probability Race is equal to race (white, black, hispanic, asian, other) given the Surname and Geolocation.
 
-predict_list_weights <- list()
-for(df in predict_list){
-  df <- df %>% 
-    pivot_longer(
-      cols = starts_with("pred."),
-      names_to = "pred_race",
-      names_prefix = "pred.",
-      values_to = "predict_value"
-    )
-  predict_list_weights[[df]] <- df
-}
+Pr(Race|(Surname and Geolocation))
 
-name_wru_weight <-name_wru %>%
-  mutate(pred.nonhisp = pred.whi + pred.bla + pred.asi + pred.oth) %>% #add ethnicity
-  pivot_longer(
-    cols = starts_with("pred."),
-    names_to = "pred_race",
-    names_prefix = "pred.",
-    values_to = "predict_value")
+In order to calculate this, the wru package uses Census data including the racial composition of frequently occuring surnames (Census Surname List), and the racial composition of Census geographic divisions. 
 
-geoname_wru_weight <-geoname_wru %>% 
-  mutate(pred.nonhisp = pred.whi + pred.bla + pred.asi + pred.oth) %>% #add ethnicity
-  pivot_longer( 
-    cols = starts_with("pred."), 
-    names_to = "pred_race",
-    names_prefix = "pred.",
-    values_to = "predict_value") # pivot to create weights
+##Criminal Court Data
+The data itself is robust and full of avenues for exploration. I concentrate my exploration on rates of offense charge category by race and ethnicity.
+```{r data, echo = FALSE}
+data %>% pull(age) %>% 
+  hchart(name = "Age of Offenders") %>% 
+  hc_title(text = "Most offenders are in their mid-twenties and younger") %>% 
+  hc_subtitle(text = "Distribution of Offender Age in Harris County Criminal Court") %>% 
+  hc_caption(text = "Harris County Criminal Court, 2014-2019") %>% 
+  hc_yAxis(title = "Number of Offenders", max = 20000) %>% 
+  hc_xAxis(title = "Age of Offenders") %>% 
+  hc_theme(ja_hc_theme())
 
+full_filtered %>% select(def_sex) %>% tibble() %>% group_by(def_sex) %>% summarise(n = n()) %>% 
+  filter(def_sex == "F" | def_sex == "M") %>% 
+  hchart("bar", hcaes(x = def_sex, y = n)) %>% 
+  hc_title(text = "The majority of offenders are male") %>% 
+  hc_subtitle(text = "Distribution of Offender Age in Harris County Criminal Court") %>% 
+  hc_caption(text = "Harris County Criminal Court, 2014-2019") %>% 
+  hc_yAxis(title = "Number of Offenders") %>% 
+  hc_xAxis(title = "Sex of Offenders") %>% 
+  hc_theme(ja_hc_theme())
+
+full_filtered %>% 
+  select(ageatfiling, def_sex) %>% tibble() %>% 
+  group_by(ageatfiling, def_sex) %>% 
+  summarise(n = n()) %>% 
+  filter(def_sex == "F" | def_sex == "M") %>% filter(is.na(ageatfiling) == FALSE) %>% 
+hchart("column", hcaes(x = ageatfiling, y = n), stacking = "normal") %>% 
+  hc_title(text = "The majority of offenders are young males at or below their midtwenties") %>% 
+  hc_subtitle(text = "Distribution of Offender Age by Sex in Harris County Criminal Court") %>% 
+  hc_caption(text = "Harris County Criminal Court, 2014-2019") %>% 
+  hc_yAxis(title = list(text = "Number of Offenders", max = 20000)) %>% 
+  hc_xAxis(title = list(text = "Age of Offenders")) %>% 
+  hc_theme(ja_hc_theme())
+
+full_filtered %>% select(def_rac, def_sex) %>% tibble() %>% 
+  group_by(def_rac,def_sex) %>% summarise(n = n()) %>% 
+  filter(def_sex == "F" | def_sex == "M") %>% 
+  hchart("bar", hcaes(x = def_rac, y = n), stacking = "normal") %>% 
+  hc_title(text = "The majority of offenders are males classified as white") %>% 
+  hc_subtitle(text = "Distribution of Offender Race in Harris County Criminal Court") %>% 
+  hc_caption(text = "Harris County Criminal Court, 2014-2019") %>% 
+  hc_yAxis(title = "Number of Offenders") %>% 
+  hc_xAxis(title = "Race of Offenders") %>% 
+  hc_theme(ja_hc_theme())
+```
+The majority of offenders are white males and the age of offenders skews toward offenders in their early to mid-twenties. The WRU package is limited in its ability to utilize sex and age as predictive elements. I detail the characteristics of the dataset here to provide context
+
+```{r, echo = FALSE}
 ### top charges using HCo Data ####
 
 #can use either _wru as we are not yet getting into weights and apps of those numbers
@@ -166,10 +139,35 @@ genpop_offcat_race %>% filter(n > mean(n)) %>%
     )
   )   %>% 
   hc_add_theme(ja_hc_theme())
+```
+Black offenders are charged with unlawful possession/conduct with a weapon a higher rates than other races. They are also charged with nonsexual assault at greater rates than other racial groups, but the disparity is a small percentage point difference (+5% Asian, +2% Native American/unknown, +3% white).
 
+## Application of wru Prediction to Each Case Offender
 
+The wru prediction calculates a probability each case offender is of each race in the set: White, Black, Hispanic, Asian, Other. The random sample below demonstrates the calcuation. In this case, I show:
+Pr(Race|Geolocation)
+for three random cases.
+```{r wru prediction}
+name_wru %>% select(pred.whi,pred.bla,pred.his,pred.asi,pred.oth) %>% slice_sample(n=3)
+```
 
+I utilized these predictions in two different ways. The first is division of each case into a weighted entry by race. Here I show
+Pr(Race|(Surname and Geolocation))
 
+```{r wru pivot}
+geoname_wru_weight %>% select(cas,pred_race,predict_value) %>% slice(7:11)
+```
+The second is using Hispanic/Latino as an ethnicity rather than race. This involves collapsing the predictions for white, black, asian, and other into a prediction for non-Hispanic/latino. Then, attaching ethnicity predictions to officer-defined racial categories. Each case has a defined race and a probability of ethnicity.
+```{r wru ethnicity pivot}
+geoname_wru_weight %>% select(cas,race,pred_race,predict_value) %>% filter(pred_race == "his" | pred_race == "nonhisp") %>% slice(1:4)
+
+```
+
+## Utlizing wru Predictions: Top Offense Categories by Race
+
+First, I compare the top offense categories by predicted race given surname.
+
+```{r top charges by race|sur using WRU results, echo=FALSE}
 #### top charges by race using WRU results ####
 #use pred_value as weights, group by pred_race and off_cat, sum on pred_value
 weighted_offcat_pred_race_name <- name_wru_weight %>% filter(pred_race != "nonhisp") %>% 
@@ -206,7 +204,11 @@ weighted_offcat_pred_race_name %>% filter(n > mean(n)) %>%
   )   %>% 
   hc_add_theme(ja_hc_theme())
 
+```
+Then, I look at race given surname and geolocation and those offense category distributions.
 
+```{r top charges by race|sur & geolocation using WRU results, echo=FALSE}
+#### race|sur & geolocation ####
 weighted_offcat_pred_race_geoname <- geoname_wru_weight %>% filter(pred_race != "nonhisp") %>% 
   group_by(offcat, pred_race) %>% 
   summarise(n = sum(predict_value)) %>% arrange(desc(n)) %>% ungroup()
@@ -240,6 +242,10 @@ weighted_offcat_pred_race_geoname %>% filter(n > mean(n)) %>%
   )   %>% 
   hc_add_theme(ja_hc_theme())
 
+```
+Next, I evaluate the charge rate solely by ethnicity.
+
+```{r ethnicity prediction and charge categories}
 #### top charges by ethnicity ####
 #use pred_value as weights, group by pred_ETHNICITY and off_cat, sum on pred_value
 weighted_offcat_pred_eth_geoname <- geoname_wru_weight %>% 
@@ -276,6 +282,7 @@ weighted_offcat_pred_eth_geoname %>% filter(n > mean(n)) %>%
   )   %>% 
   hc_add_theme(ja_hc_theme())
 ### interested to add predicted ethnicity to officer-defined race
+  
 
 
 weighted_offcat_pred_eth_name <- name_wru_weight %>% filter(pred_race == "nonhisp" | pred_race == "his") %>% 
@@ -292,7 +299,7 @@ weighted_offcat_pred_eth_name <- weighted_offcat_pred_eth_name %>%
 
 weighted_offcat_pred_eth_name %>% filter(n > mean(n)) %>% 
   hchart("bar",hcaes(x = pred_race,y = percent, group = offcat)) %>% 
-  hc_title(text = "Geographic and Name-base prediction maintains Hispanics charged under Alcohol-Driving comprise the largest offense category") %>%
+  hc_title(text = "Name-based prediction maintains Hispanics charged under Alcohol-Driving comprise the largest offense category") %>%
   hc_subtitle(text = "Share of Offense Categories by Predicted Ethnicity Given Name") %>% 
   hc_caption(text = "Harris County Criminal Court, 2014-2019") %>% 
   hc_xAxis(title = "Prediced Ethnicity") %>% 
@@ -310,8 +317,9 @@ weighted_offcat_pred_eth_name %>% filter(n > mean(n)) %>%
     )
   )   %>% 
   hc_add_theme(ja_hc_theme())
-
-### interested to add predicted ethnicity to officer-defined race
+```
+Finally, we evaluate by adding ethnicity to the office-defined race.
+```{r}
 
 #### top charges by race and predicted ethnicity ####
 weighted_offcat_pred_race_eth_name <- name_wru_weight %>% 
@@ -359,3 +367,6 @@ weighted_offcat_pred_race_eth_name %>% filter(n > 6000) %>%
     )
   )   %>% 
   hc_add_theme(ja_hc_theme())
+
+```
+
